@@ -127,3 +127,142 @@ export function CodeIcon(props: IconProps) {
     </IconBase>
   );
 }
+
+export function BoldIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M7 5h6.5a4 4 0 0 1 0 8H7V5Zm0 8h7.2a4 4 0 0 1 0 8H7v-8Z" />
+    </IconBase>
+  );
+}
+
+export function ItalicIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M10 5h7M7 19h7M14 5l-3 14" />
+    </IconBase>
+  );
+}
+
+export function UnderlineIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M7 4v7a5 5 0 0 0 10 0V4M5 20h14" />
+    </IconBase>
+  );
+}
+
+export function StrikethroughIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 12h16M8 8.2A3.2 3.2 0 0 1 11.2 5h2.2a3 3 0 0 1 2.9 2.2M8 15.8A3.2 3.2 0 0 0 11.2 19h2.2a3 3 0 0 0 2.9-2.2" />
+    </IconBase>
+  );
+}
+
+export function HighlightIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="m9 14 7.8-7.8a2 2 0 0 1 2.8 0l.2.2a2 2 0 0 1 0 2.8L12 17H7.5l1.5-3Z" />
+      <path d="M4 21h16M9 14l3 3" />
+    </IconBase>
+  );
+}
+
+export function ListIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M9 6h11M9 12h11M9 18h11" />
+      <circle cx="4.5" cy="6" r="1" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="12" r="1" fill="currentColor" stroke="none" />
+      <circle cx="4.5" cy="18" r="1" fill="currentColor" stroke="none" />
+    </IconBase>
+  );
+}
+
+export function ListOrderedIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M10 6h10M10 12h10M10 18h10" />
+      <path d="M4 5h1.2v3M3.8 8h2.4M4 15.5a1.3 1.3 0 0 1 2.4.6c0 1-1.5 2.3-2.4 3h2.6" />
+    </IconBase>
+  );
+}
+
+export function TaskListIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3.5" y="4.5" width="5" height="5" rx="1" />
+      <path d="m4.7 7 1.1 1.1 1.9-2.2M12 6.5h8.5M12 12h8.5M12 17.5h8.5M3.5 14h5v5h-5z" />
+    </IconBase>
+  );
+}
+
+export function QuoteIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M5 7h5v5H6.5c0 2.2 1 3.4 3 4M14 7h5v5h-3.5c0 2.2 1 3.4 3 4" />
+    </IconBase>
+  );
+}
+
+export function InlineCodeIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="m9 8-4 4 4 4M15 8l4 4-4 4" />
+    </IconBase>
+  );
+}
+
+export function LinkIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M10 13.5a4 4 0 0 0 5.7.1l2.5-2.5a4 4 0 0 0-5.7-5.7L11 6.9" />
+      <path d="M14 10.5a4 4 0 0 0-5.7-.1l-2.5 2.5a4 4 0 0 0 5.7 5.7l1.4-1.4" />
+    </IconBase>
+  );
+}
+
+export function ImageIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <circle cx="9" cy="10" r="1.5" />
+      <path d="m4.5 17 4.2-4.2 3.1 3.1 2.2-2.2 5.5 5.5" />
+    </IconBase>
+  );
+}
+
+export function TableIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="1.5" />
+      <path d="M3.5 9.5h17M3.5 14.5h17M9.5 4.5v15M15 4.5v15" />
+    </IconBase>
+  );
+}
+
+export function MinusIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M5 12h14" />
+    </IconBase>
+  );
+}
+
+export function ListTreeIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M5 5v14M5 8h5M5 16h5M14 5h5M14 12h5M14 19h5" />
+      <path d="M10 8v8" />
+    </IconBase>
+  );
+}
+
+export function SpinnerIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 3.5a8.5 8.5 0 1 0 8.5 8.5" />
+    </IconBase>
+  );
+}

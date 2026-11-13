@@ -20,7 +20,6 @@ interface NoteListProps {
   onSelect: (id: string) => void;
   onCreate: () => void;
   onRequestDelete: (note: Note) => void;
-  onClose?: () => void;
 }
 
 export function NoteList({
@@ -33,7 +32,6 @@ export function NoteList({
   onSelect,
   onCreate,
   onRequestDelete,
-  onClose,
 }: NoteListProps) {
   const isSearching = keyword.trim().length > 0;
   const visibleCountLabel = useMemo(
@@ -52,17 +50,6 @@ export function NoteList({
             <span className="text-[11px] tabular-nums text-slate-400">
               {visibleCountLabel} 篇
             </span>
-            {onClose ? (
-              <button
-                type="button"
-                onClick={onClose}
-                autoFocus
-                aria-label="关闭笔记列表"
-                className="grid h-7 w-7 place-items-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400"
-              >
-                <XIcon className="h-4 w-4" />
-              </button>
-            ) : null}
           </div>
         </div>
 

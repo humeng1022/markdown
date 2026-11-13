@@ -9,6 +9,8 @@
 | 前端框架      | React 18 + TypeScript    | 组件化开发，类型安全           |
 | 构建工具      | Vite                     | 快速冷启动与 HMR               |
 | Markdown 解析 | react-markdown           | 将 Markdown 转为 React 组件树  |
+| GFM 扩展      | remark-gfm               | 表格、任务列表、删除线         |
+| HTML 净化     | rehype-raw + rehype-sanitize | 白名单渲染格式标签，过滤脚本 |
 | 代码高亮      | react-syntax-highlighter | 代码块语法高亮，支持多语言     |
 | 样式方案      | Tailwind CSS             | 原子化 CSS，快速实现响应式布局 |
 | 数据存储      | LocalStorage             | 浏览器本地持久化，无需后端     |
@@ -18,7 +20,8 @@
 ```bash
 npm create vite@latest markdown-notes -- --template react-ts
 cd markdown-notes
-npm install react-markdown react-syntax-highlighter
+npm install react-markdown react-syntax-highlighter remark-gfm
+npm install rehype-raw rehype-sanitize
 npm install -D @types/react-syntax-highlighter
 npm install -D tailwindcss postcss autoprefixer
 npx tailwindcss init -p
@@ -55,15 +58,25 @@ export default {
 src/
 ├── components/
 │   ├── NoteList.tsx        # 笔记列表（标题、搜索、新建、删除）
-│   ├── Editor.tsx          # Markdown 编辑器（textarea）
-│   ├── Preview.tsx         # Markdown 预览区
-│   └── MarkdownRenderer.tsx# react-markdown 封装 + 代码高亮
+│   ├── Editor.tsx          # Markdown 编辑器、选区操作、图片粘贴/拖拽
+│   ├── EditorToolbar.tsx   # 格式工具栏
+│   ├── ImageDialog.tsx     # 图片链接 / 本地上传弹窗
+│   ├── Preview.tsx         # Markdown 预览区、标题 id、滚动高亮
+│   ├── MarkdownRenderer.tsx# react-markdown 封装 + 代码高亮 + HTML 净化
+│   ├── Sidebar.tsx         # 笔记 / 大纲 Tab
+│   ├── OutlinePanel.tsx    # 大纲列表
+│   └── ConfirmDialog.tsx   # 删除确认
 ├── hooks/
 │   └── useNotes.ts         # 笔记状态管理与 LocalStorage 持久化
 ├── types/
-│   └── note.ts             # Note 类型定义
+│   ├── note.ts             # Note 类型定义
+│   └── outline.ts          # OutlineItem 类型
 ├── utils/
-│   └── storage.ts          # LocalStorage 读写封装
+│   ├── storage.ts          # LocalStorage 读写封装
+│   ├── note.ts             # 标题推导、排序、日期格式化
+│   ├── markdownEdits.ts    # 选区包裹、列表、标题、代码块等纯函数
+│   ├── image.ts            # 本地图片压缩与 data URL
+│   └── outline.ts          # 标题 slug / 唯一 id
 ├── App.tsx                 # 布局与页面组装
 ├── main.tsx
 └── index.css
@@ -89,6 +102,7 @@ export interface Note {
 - Key：`markdown-notes:notes`，值为 `Note[]` 的 JSON 字符串。
 - Key：`markdown-notes:activeId`，值为当前选中笔记 id。
 - 读写统一封装在 `utils/storage.ts`，读取时做 `try/catch` 与数据校验，解析失败返回空数组，避免脏数据导致白屏。
+- 本地图片以 base64 内嵌在 `content` 中，不额外拆 key；容量风险由界面提示与图片大小限制兜底。
 
 ```ts
 // src/utils/storage.ts
@@ -327,9 +341,13 @@ export function useNotes() {
 | 组件               | 职责                                     | Props                                |
 | :----------------- | :--------------------------------------- | :----------------------------------- |
 | `NoteList`         | 搜索框、新建按钮、笔记标题列表、删除按钮 | `notes`、`activeId`、`keyword`、回调 |
-| `Editor`           | 受控 textarea，展示/编辑当前笔记内容     | `value`、`onChange`                  |
-| `Preview`          | 滚动容器 + `MarkdownRenderer`            | `content`                            |
-| `MarkdownRenderer` | react-markdown + 代码高亮配置            | `content`                            |
+| `Editor`           | 受控 textarea，展示/编辑当前笔记内容     | `note`、`onChange`、`focusToken`     |
+| `EditorToolbar`    | 格式工具栏，触发选区编辑                 | `onHeading`、`onWrap`、`onCodeBlock` 等 |
+| `ImageDialog`      | 图片 URL / 本地上传                      | `open`、`onInsert`、`onCancel`       |
+| `Preview`          | 滚动容器 + `MarkdownRenderer` + 大纲回调 | `content`、`onOutlineChange` 等      |
+| `MarkdownRenderer` | react-markdown + 代码高亮 + HTML 净化    | `content`                            |
+| `Sidebar`          | 笔记 / 大纲 Tab 切换                     | 笔记列表 props + 大纲 props          |
+| `OutlinePanel`     | 大纲列表与空状态                         | `items`、`activeId`、`onSelect`      |
 
 ------
 
@@ -356,7 +374,61 @@ npm run preview  # 预览构建产物
 ## 8. 后续演进（非本期范围）
 
 - 笔记导入/导出（`.md` 文件）。
-- 分屏比例拖拽、编辑/预览 Tab 切换。
-- 自动保存防抖、字数统计。
+- 分屏比例拖拽。
+- 自动保存防抖。
 - 从 LocalStorage 迁移到 IndexedDB 或后端 API。
-- 深色模式、目录（TOC）导航。
+- 深色模式。
+
+------
+
+## 9. v1.1 编辑增强
+
+在基础版之上追加了格式工具栏、字体样式、图片、大纲与快捷键，数据模型保持不变。
+
+### 9.1 新增依赖
+
+- `remark-gfm`：GFM 表格、任务列表、删除线。
+- `rehype-raw`：解析笔记中的原始 HTML。
+- `rehype-sanitize`：对原始 HTML 做白名单净化，防止脚本与事件属性执行。
+
+### 9.2 新增模块
+
+| 模块 | 职责 |
+| :--- | :--- |
+| `components/EditorToolbar.tsx` | 格式工具栏；调用编辑操作并重置下拉框 |
+| `components/ImageDialog.tsx` | 图片 URL / 本地上传弹窗与错误提示 |
+| `components/Sidebar.tsx` | 笔记 / 大纲两个 Tab 的侧边栏 |
+| `components/OutlinePanel.tsx` | 大纲列表、空状态与当前标题高亮 |
+| `utils/markdownEdits.ts` | 选区包裹、行前缀切换、标题、代码块、表格、图片等纯函数 |
+| `utils/image.ts` | 本地图片校验、压缩（最长边 1600px）、WebP data URL |
+| `utils/outline.ts` | 标题 slug 与唯一 id |
+| `types/outline.ts` | `OutlineItem` 类型 |
+
+### 9.3 格式与 HTML 净化
+
+- 工具栏为选中文字包裹 Markdown 标记（`**`、`*`、`~~`、反引号等）或 HTML 标签（`span`、`mark`、`u`）。
+- 颜色 / 字号 / 字体通过 `md-*` 类名实现，样式定义在 `src/index.css`。
+- `rehype-sanitize` 只允许 `span` / `mark` / `u` / `sub` / `sup` / `kbd` 等标签，`span` / `mark` 只允许 `md-*` 类名；`style`、`script`、事件属性被移除。
+- `urlTransform` 仅额外放行 `data:image/(png|jpeg|gif|webp|avif);base64,`，普通链接仍走 `defaultUrlTransform`。
+
+### 9.4 图片流程
+
+1. 用户选择 URL 或本地图片。
+2. 本地 PNG/JPEG/WebP 经过 Canvas 压缩为 WebP（最长边 1600px）；GIF 保留原格式。
+3. 以 base64 data URL 写入 Markdown 图片语法，随笔记一起存入 LocalStorage。
+4. 拒绝 SVG 与大于 4MB 的源文件；压缩后 data URL 超过约 1.8MB 时提示错误。
+
+### 9.5 大纲流程
+
+- 预览渲染完成后，`Preview` 查询 `article` 中的 h1–h6，使用 `createHeadingSlugger()` 生成 `heading-*` 唯一 id，并回调给 App。
+- 侧边栏「大纲」Tab 渲染标题树；点击后调用 `scrollIntoView` 跳转。
+- 预览滚动时用 rAF 节流计算当前标题，驱动大纲高亮；到达底部时高亮最后一个标题。
+- 预览文章底部增加 `45vh` 内边距，使最后一个标题也能滚动到接近顶部。
+
+### 9.6 验证补充
+
+- 工具栏加粗 / 颜色 / 字号 / 高亮 / 下划线 / 删除线 / 链接 / 代码块 / 表格全部通过浏览器验证。
+- 图片 URL、本地图片、压缩 WebP、刷新恢复通过验证。
+- 大纲生成、点击跳转、滚动高亮通过验证。
+- `<script>` 不执行、`onerror` 被移除、`md-*` 样式生效通过验证。
+- 375px 移动端工具栏、抽屉与大纲跳转通过验证。

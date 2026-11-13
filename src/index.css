@@ -49,3 +49,86 @@
     background-color: theme('colors.slate.400');
   }
 }
+
+/* 工具栏插入的 HTML 样式类，经过 rehype-sanitize 白名单过滤 */
+@layer components {
+  .md-color-default {
+    color: inherit;
+  }
+
+  .md-color-slate {
+    color: #475569;
+  }
+
+  .md-color-red {
+    color: #dc2626;
+  }
+
+  .md-color-orange {
+    color: #ea580c;
+  }
+
+  .md-color-amber {
+    color: #b45309;
+  }
+
+  .md-color-green {
+    color: #15803d;
+  }
+
+  .md-color-teal {
+    color: #0f766e;
+  }
+
+  .md-color-blue {
+    color: #1d4ed8;
+  }
+
+  .md-color-violet {
+    color: #6d28d9;
+  }
+
+  .md-color-pink {
+    color: #be185d;
+  }
+
+  .md-size-base {
+    font-size: 1em;
+  }
+
+  .md-size-sm {
+    font-size: 0.86em;
+  }
+
+  .md-size-lg {
+    font-size: 1.15em;
+  }
+
+  .md-size-xl {
+    font-size: 1.35em;
+  }
+
+  .md-size-2xl {
+    font-size: 1.6em;
+  }
+
+  .md-font-sans {
+    font-family: inherit;
+  }
+
+  .md-font-serif {
+    font-family: Georgia, 'Times New Roman', 'Songti SC', SimSun, serif;
+  }
+
+  .md-font-mono {
+    font-family: 'JetBrains Mono', 'SFMono-Regular', 'Cascadia Code', Consolas,
+      'Liberation Mono', Menlo, monospace;
+  }
+
+  .md-highlight {
+    border-radius: 0.2em;
+    background-color: #fef08a;
+    color: #713f12;
+    padding: 0 0.15em;
+  }
+}

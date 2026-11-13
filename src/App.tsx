@@ -10,11 +10,12 @@ import {
   PlusIcon,
   XIcon,
 } from './components/Icons';
-import { NoteList } from './components/NoteList';
 import { Preview } from './components/Preview';
+import { Sidebar } from './components/Sidebar';
 import { Welcome } from './components/Welcome';
 import { useNotes } from './hooks/useNotes';
 import type { Note } from './types/note';
+import type { OutlineItem } from './types/outline';
 
 type MobileTab = 'edit' | 'preview';
 
@@ -38,14 +39,42 @@ export default function App() {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Note | null>(null);
   const [focusToken, setFocusToken] = useState(0);
+  const [outline, setOutline] = useState<OutlineItem[]>([]);
+  const [activeHeadingId, setActiveHeadingId] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
+  const toastTimerRef = useRef<number | null>(null);
 
   const closeDrawer = useCallback(() => {
     setIsDrawerOpen(false);
     menuButtonRef.current?.focus();
   }, []);
 
+  const notify = useCallback((message: string) => {
+    setToast(message);
+
+    if (toastTimerRef.current !== null) {
+      window.clearTimeout(toastTimerRef.current);
+    }
+
+    toastTimerRef.current = window.setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, 4000);
+  }, []);
+
+  useEffect(
+    () => () => {
+      if (toastTimerRef.current !== null) {
+        window.clearTimeout(toastTimerRef.current);
+      }
+    },
+    [],
+  );
+
   const handleCreate = useCallback(() => {
+    setOutline([]);
+    setActiveHeadingId(null);
     createNote();
     setFocusToken((token) => token + 1);
     setMobileTab('edit');
@@ -54,6 +83,8 @@ export default function App() {
 
   const handleSelect = useCallback(
     (id: string) => {
+      setOutline([]);
+      setActiveHeadingId(null);
       selectNote(id);
       setMobileTab('edit');
       setIsDrawerOpen(false);
@@ -70,13 +101,47 @@ export default function App() {
       return;
     }
 
+    if (pendingDelete.id === activeId) {
+      setOutline([]);
+      setActiveHeadingId(null);
+    }
+
     deleteNote(pendingDelete.id);
     setPendingDelete(null);
-  }, [pendingDelete, deleteNote]);
+  }, [pendingDelete, activeId, deleteNote]);
 
   const handleCancelDelete = useCallback(() => {
     setPendingDelete(null);
   }, []);
+
+  const handleOutlineChange = useCallback((items: OutlineItem[]) => {
+    setOutline(items);
+    setActiveHeadingId((current) => {
+      if (current && items.some((item) => item.id === current)) {
+        return current;
+      }
+
+      return items[0]?.id ?? null;
+    });
+  }, []);
+
+  const handleActiveHeadingChange = useCallback((id: string | null) => {
+    setActiveHeadingId(id);
+  }, []);
+
+  const handleSelectHeading = useCallback(
+    (id: string) => {
+      setActiveHeadingId(id);
+      setMobileTab('preview');
+      closeDrawer();
+      window.requestAnimationFrame(() => {
+        document
+          .getElementById(id)
+          ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    },
+    [closeDrawer],
+  );
 
   // 桌面宽度下关闭移动端抽屉，避免窗口放大后遮罩残留。
   useEffect(() => {
@@ -106,15 +171,25 @@ export default function App() {
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [isDrawerOpen, pendingDelete, closeDrawer]);
 
-  const noteListProps = {
+  useEffect(() => {
+    if (!activeNote) {
+      setOutline([]);
+      setActiveHeadingId(null);
+    }
+  }, [activeNote]);
+
+  const sidebarProps = {
     notes: filteredNotes,
     totalCount: notes.length,
     activeId,
     keyword,
+    outline,
+    activeHeadingId,
     onKeywordChange: setKeyword,
     onSelect: handleSelect,
     onCreate: handleCreate,
     onRequestDelete: handleRequestDelete,
+    onSelectHeading: handleSelectHeading,
   };
 
   const storageLabel = storageError ? '仅保存在内存' : '已保存到本地';
@@ -201,7 +276,7 @@ export default function App() {
 
         <div className="flex min-h-0 flex-1">
           <aside className="hidden w-72 shrink-0 border-r border-slate-200 bg-white md:flex md:flex-col">
-            <NoteList {...noteListProps} searchId="note-search-desktop" />
+            <Sidebar {...sidebarProps} searchId="note-search-desktop" />
           </aside>
 
           {activeNote ? (
@@ -258,6 +333,7 @@ export default function App() {
                     note={activeNote}
                     onChange={(content) => updateContent(activeNote.id, content)}
                     focusToken={focusToken}
+                    onNotify={notify}
                   />
                 </div>
 
@@ -269,7 +345,11 @@ export default function App() {
                     mobileTab === 'edit' ? 'hidden md:flex' : 'flex'
                   } min-h-0 min-w-0 flex-1 flex-col`}
                 >
-                  <Preview content={activeNote.content} />
+                  <Preview
+                    content={activeNote.content}
+                    onOutlineChange={handleOutlineChange}
+                    onActiveHeadingChange={handleActiveHeadingChange}
+                  />
                 </div>
               </div>
             </main>
@@ -294,8 +374,8 @@ export default function App() {
               aria-label="笔记列表"
               className="absolute inset-y-0 left-0 flex w-[84%] max-w-xs animate-slide-in flex-col bg-white shadow-2xl motion-reduce:animate-none"
             >
-              <NoteList
-                {...noteListProps}
+              <Sidebar
+                {...sidebarProps}
                 searchId="note-search-mobile"
                 onClose={closeDrawer}
               />
@@ -317,6 +397,16 @@ export default function App() {
         onConfirm={handleConfirmDelete}
         onCancel={handleCancelDelete}
       />
+
+      {toast ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-5 left-1/2 z-[60] max-w-[calc(100vw-2rem)] -translate-x-1/2 animate-pop-in rounded-xl bg-slate-900/95 px-4 py-2.5 text-center text-xs font-medium text-white shadow-xl motion-reduce:animate-none"
+        >
+          {toast}
+        </div>
+      ) : null}
     </>
   );
 }

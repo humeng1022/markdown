@@ -1,12 +1,54 @@
 import { Children, isValidElement, type ReactNode } from 'react';
-import ReactMarkdown, { type Components } from 'react-markdown';
+import ReactMarkdown, {
+  defaultUrlTransform,
+  type Components,
+  type UrlTransform,
+} from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import rehypeRaw from 'rehype-raw';
+import rehypeSanitize, { defaultSchema } from 'rehype-sanitize';
 import remarkGfm from 'remark-gfm';
 
 interface MarkdownRendererProps {
   content: string;
 }
+
+const SANITIZE_SCHEMA = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames ?? []),
+    'span',
+    'mark',
+    'u',
+    'sub',
+    'sup',
+    'kbd',
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    span: [['className', /^md-/]],
+    mark: [['className', /^md-/]],
+    u: [],
+    sub: [],
+    sup: [],
+    kbd: [],
+  },
+  protocols: {
+    ...defaultSchema.protocols,
+    src: [...(defaultSchema.protocols?.src ?? []), 'data'],
+  },
+};
+
+const DATA_IMAGE_PATTERN = /^data:image\/(?:png|jpe?g|gif|webp|avif);base64,/i;
+
+const allowDataImages: UrlTransform = (url, key) => {
+  if (key === 'src' && DATA_IMAGE_PATTERN.test(url)) {
+    return url;
+  }
+
+  return defaultUrlTransform(url);
+};
 
 const LANGUAGE_ALIASES: Record<string, string> = {
   js: 'javascript',
@@ -143,26 +185,32 @@ function CodeBlock({ code, language }: { code: string; language: string | null }
 
 const components: Components = {
   h1: ({ children }) => (
-    <h1 className="mb-4 mt-8 border-b border-slate-100 pb-2 text-3xl font-bold tracking-tight text-slate-900">
+    <h1 className="mb-4 mt-8 scroll-mt-4 border-b border-slate-100 pb-2 text-3xl font-bold tracking-tight text-slate-900">
       {children}
     </h1>
   ),
   h2: ({ children }) => (
-    <h2 className="mb-3 mt-8 text-2xl font-semibold tracking-tight text-slate-900">
+    <h2 className="mb-3 mt-8 scroll-mt-4 text-2xl font-semibold tracking-tight text-slate-900">
       {children}
     </h2>
   ),
   h3: ({ children }) => (
-    <h3 className="mb-2 mt-6 text-xl font-semibold text-slate-900">{children}</h3>
+    <h3 className="mb-2 mt-6 scroll-mt-4 text-xl font-semibold text-slate-900">
+      {children}
+    </h3>
   ),
   h4: ({ children }) => (
-    <h4 className="mb-2 mt-5 text-lg font-semibold text-slate-800">{children}</h4>
+    <h4 className="mb-2 mt-5 scroll-mt-4 text-lg font-semibold text-slate-800">
+      {children}
+    </h4>
   ),
   h5: ({ children }) => (
-    <h5 className="mb-1 mt-4 text-base font-semibold text-slate-800">{children}</h5>
+    <h5 className="mb-1 mt-4 scroll-mt-4 text-base font-semibold text-slate-800">
+      {children}
+    </h5>
   ),
   h6: ({ children }) => (
-    <h6 className="mb-1 mt-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
+    <h6 className="mb-1 mt-4 scroll-mt-4 text-sm font-semibold uppercase tracking-wide text-slate-500">
       {children}
     </h6>
   ),
@@ -173,6 +221,19 @@ const components: Components = {
   em: ({ children }) => <em className="italic">{children}</em>,
   del: ({ children }) => (
     <del className="text-slate-400 line-through">{children}</del>
+  ),
+  u: ({ children }) => (
+    <u className="underline decoration-slate-400 underline-offset-2">{children}</u>
+  ),
+  mark: ({ children, className }) => (
+    <mark className={className ?? 'rounded bg-amber-100 px-0.5 text-inherit'}>
+      {children}
+    </mark>
+  ),
+  kbd: ({ children }) => (
+    <kbd className="rounded border border-slate-200 bg-slate-50 px-1.5 py-0.5 font-mono text-[0.8em] text-slate-600 shadow-sm">
+      {children}
+    </kbd>
   ),
   a: ({ children, href, title }) => {
     const isExternal = typeof href === 'string' && /^https?:\/\//i.test(href);
@@ -253,7 +314,7 @@ const components: Components = {
       title={title}
       loading="lazy"
       decoding="async"
-      className="my-4 max-w-full rounded-lg border border-slate-200 shadow-sm"
+      className="my-4 max-h-[32rem] max-w-full rounded-lg border border-slate-200 object-contain shadow-sm"
     />
   ),
   table: ({ children }) => (
@@ -309,7 +370,12 @@ const components: Components = {
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   return (
     <div className="[&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-      <ReactMarkdown remarkPlugins={REMARK_PLUGINS} components={components}>
+      <ReactMarkdown
+        remarkPlugins={REMARK_PLUGINS}
+        rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA]]}
+        urlTransform={allowDataImages}
+        components={components}
+      >
         {content}
       </ReactMarkdown>
     </div>

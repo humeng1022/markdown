@@ -9,7 +9,8 @@
 ## 1. 项目概览
 
 - 产品：纯前端 Markdown 笔记应用，左侧编辑、右侧实时预览，笔记数据存于浏览器 LocalStorage。
-- 技术栈：React 18 + TypeScript + Vite；Markdown 解析用 `react-markdown`；代码高亮用 `react-syntax-highlighter`（Prism）；样式用 Tailwind CSS。
+- 功能：Markdown/GFM 渲染、格式工具栏（字体颜色/字号/字体/高亮）、代码高亮、图片插入、大纲导航、笔记管理、本地持久化。
+- 技术栈：React 18 + TypeScript + Vite；Markdown 解析用 `react-markdown`；GFM 用 `remark-gfm`；原始 HTML 用 `rehype-raw` + `rehype-sanitize`；代码高亮用 `react-syntax-highlighter`（Prism）；样式用 Tailwind CSS。
 - 形态：零后端、零登录、单页应用。
 - 详细需求见 `PRD.md`，架构与模块设计见 `TECH.md`。实现前先读这两份文档，不要凭猜测新增需求。
 
@@ -18,7 +19,7 @@
 - Node.js：>= 18.18（Vite 5 要求），推荐 LTS 版本。
 - 包管理器：npm（与 `TECH.md` 保持一致）。**不要**擅自切换为 pnpm/yarn，也不要提交多份 lockfile。
 - 浏览器目标：Chrome / Edge / Firefox / Safari 最近两个大版本；支持宽度 >= 375px。
-- 仅使用浏览器原生能力：LocalStorage、`crypto.randomUUID()`。不引入后端、数据库、账号体系或云存储。
+- 仅使用浏览器原生能力：LocalStorage、`crypto.randomUUID()`、`FileReader`、Canvas、剪贴板/拖拽事件。不引入后端、数据库、账号体系或云存储。
 
 ## 3. 安装与运行命令
 
@@ -40,7 +41,9 @@ npm run lint             # ESLint 检查（若已配置）
 | --------- | ------------------------------------------------------------ | ----------------------------------------------- |
 | 框架      | react、react-dom                                             | 18.x                                            |
 | 语言/构建 | typescript、vite、@vitejs/plugin-react                       | 按 Vite React-TS 模板                           |
-| Markdown  | react-markdown                                               | 不启用 `rehype-raw`，保持默认不渲染原始 HTML    |
+| Markdown  | react-markdown                                               | 不新增另一套 Markdown 解析器                    |
+| GFM       | remark-gfm                                                   | 表格、任务列表、删除线必需                      |
+| HTML      | rehype-raw + rehype-sanitize                                 | 必须走白名单净化，禁止脚本/事件属性/危险协议    |
 | 代码高亮  | react-syntax-highlighter + `@types/react-syntax-highlighter` | 使用 Prism 版本（`Prism as SyntaxHighlighter`） |
 | 样式      | tailwindcss、postcss、autoprefixer                           | 原子类优先，不新增 CSS-in-JS 库                 |
 
@@ -85,6 +88,10 @@ npm run lint             # ESLint 检查（若已配置）
 - 预览更新使用 `useDeferredValue` 降低大文档输入时的解析压力。
 - `react-markdown` 的自定义渲染统一放在 `MarkdownRenderer`，通过 `components.code` 处理行内代码与代码块分流；不要在多个组件里重复配置。
 - 代码块语言取自 `className` 中的 `language-xxx`，取不到时回退为 `text`，不得抛错。
+- 格式工具栏的选区操作必须封装为 `utils/markdownEdits.ts` 中的纯函数，组件只负责取值与回调，不要在 JSX 中拼装复杂字符串逻辑。
+- 原始 HTML 必须经过 `rehype-sanitize` 白名单；只允许 `md-*` 类名，不得放行 `style`、`script`、事件属性或危险协议。
+- 图片插入统一走 `utils/image.ts`：拒绝 SVG，限制源文件大小，压缩后以 data URL 写入；粘贴 / 拖拽也复用同一流程。
+- 大纲通过预览 DOM 中的标题生成，id 统一加 `heading-` 前缀，避免与页面其他 id 冲突；点击与滚动高亮不得直接操作笔记数据。
 
 ## 6. 数据与存储约束
 
@@ -92,6 +99,7 @@ npm run lint             # ESLint 检查（若已配置）
 - 所有读写必须经过 `src/utils/storage.ts`，禁止在组件中直接调用 `localStorage`。
 - 读取必须 `try/catch` 并对解析结果做数组校验，失败返回空数组，禁止让脏数据导致白屏。
 - 写入失败（隐私模式、超限）必须捕获并给出非阻断提示，不得中断编辑。
+- 本地图片以 base64 内嵌在笔记内容中，必须限制单图大小并提示 LocalStorage 容量风险；不得把图片上传到服务器。
 - 数据结构变更必须同步更新 `src/types/note.ts` 与 `TECH.md` 中的数据模型章节。
 - 不采集、不上传任何用户数据；不引入分析或监控 SDK。
 
@@ -112,7 +120,7 @@ npm run lint             # ESLint 检查（若已配置）
 
 ## 9. 范围约束
 
-- 严格按 `PRD.md` 的 P0/P1 范围实现；非目标（账号、同步、协作、图片上传、富文本、PDF 导出、版本历史）不实现，除非用户明确要求。
+- 严格按 `PRD.md` 的 P0/P1 与 v1.1 编辑增强范围实现；非目标（账号、同步、协作、云端图片上传、WYSIWYG 富文本、PDF 导出、版本历史）不实现，除非用户明确要求。
 - 不擅自扩大范围或「顺手」重构无关模块；发现需要较大改动时先说明方案再动手。
 - 不引入后端接口、不发起网络请求、不添加登录流程。
 
